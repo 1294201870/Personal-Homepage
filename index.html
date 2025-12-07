@@ -7,27 +7,25 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 游戏/粒子画布 -->
+    <!-- 太空粒子画布 -->
     <canvas id="particles-canvas"></canvas>
     
-    <!-- FPS 战术 HUD 层 -->
+    <!-- 战术 HUD 层 -->
     <div class="hud-overlay">
-        <!-- 四角边框 -->
         <div class="hud-corner top-left"></div>
         <div class="hud-corner top-right"></div>
         <div class="hud-corner bottom-left"></div>
         <div class="hud-corner bottom-right"></div>
         
-        <!-- 底部状态栏 & 分数板 -->
         <div class="hud-status">
-            <span>SYS: ONLINE</span>
-            <!-- 核心：动态分数显示 -->
-            <span id="score-display" style="color: #f0f; font-weight: bold; text-shadow: 0 0 10px #f0f;">SCORE: 0000</span>
-            <span>TARGET: ACQUIRED</span>
+            <span>SYS: ORBITAL_SCAN</span>
+            <!-- 显示当前粒子数量，作为一种数据监控 -->
+            <span id="particle-counter" style="color: #f0f;">OBJECTS: 100</span>
+            <span>SIMULATION: ACTIVE</span>
         </div>
     </div>
 
-    <!-- 主要内容层 -->
+    <!-- 交互内容层 -->
     <div class="interface">
         <header>
             <h1 class="glitch" data-text="1294201870">1294201870</h1>
@@ -35,15 +33,15 @@
         </header>
 
         <section class="skills-grid">
-            <!-- 技能卡片 (包裹 span 以实现 3D 悬浮文字) -->
             <div class="skill-card"><span>AI & Machine Learning</span></div>
             <div class="skill-card"><span>Network Security</span></div>
             <div class="skill-card"><span>Database Systems</span></div>
             <div class="skill-card"><span>Game Design</span></div>
         </section>
         
+        <!-- 新的操作提示 -->
         <div class="instruction">
-            [ HOLD CLICK ] TO CHARGE GRAVITY WELL // [ RELEASE ] TO DETONATE
+            [ LEFT CLICK ] TO DEPLOY GRAVITY WELL // OBSERVE ORBITAL MECHANICS
         </div>
     </div>
 
