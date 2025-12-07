@@ -6,10 +6,12 @@ body, html {
     color: #0ff;
     font-family: 'Courier New', monospace;
     overflow: hidden;
-    cursor: crosshair; /* FPS 准星光标 */
+    cursor: crosshair;
+    /* 核心：开启全局 3D 透视深度 */
+    perspective: 1000px; 
 }
 
-/* --- CRT 扫描线滤镜 --- */
+/* CRT 扫描线 */
 body::after {
     content: " ";
     display: block;
@@ -35,10 +37,13 @@ body::after {
     align-items: center;
     justify-content: center;
     height: 100%;
-    pointer-events: none; /* 让鼠标点击穿透到 Canvas */
+    pointer-events: none; 
+    /* 允许整个界面层进行 3D 倾斜 */
+    transform-style: preserve-3d; 
+    transition: transform 0.1s ease-out; 
 }
 
-/* --- HUD 战术界面 --- */
+/* HUD 样式 */
 .hud-corner {
     position: fixed;
     width: 40px;
@@ -66,12 +71,13 @@ body::after {
     text-shadow: 0 0 5px #0ff;
 }
 
-/* --- 故障文字特效 --- */
+/* 标题样式 - 增加Z轴悬浮 */
 h1.glitch {
     font-size: 4rem;
     text-shadow: 2px 2px #f0f;
     animation: glitch 1s infinite alternate;
-    pointer-events: auto; /* 标题可以交互 */
+    pointer-events: auto; 
+    transform: translateZ(50px); /* 标题浮起来 */
 }
 
 .subtitle {
@@ -79,38 +85,59 @@ h1.glitch {
     font-size: 1.2rem;
     margin-top: -10px;
     opacity: 0.8;
+    transform: translateZ(30px); /* 副标题稍微浮一点 */
 }
 
-/* --- 技能卡片 --- */
+/* 技能网格 */
 .skills-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    margin-top: 2rem;
+    gap: 2rem;
+    margin-top: 3rem;
     pointer-events: auto;
+    perspective: 1000px; /* 卡片容器透视 */
 }
 
+/* --- 3D 全息卡片样式 --- */
 .skill-card {
+    position: relative;
     border: 1px solid #0ff;
-    padding: 1rem 2rem;
-    background: rgba(0, 20, 20, 0.6); /* 玻璃质感 */
-    box-shadow: 0 0 5px #0ff;
+    padding: 1.5rem 2.5rem;
+    background: rgba(0, 20, 20, 0.4);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
     text-align: center;
-    transition: all 0.3s;
     cursor: pointer;
+    
+    /* 3D 变换设置 */
+    transform-style: preserve-3d;
+    transform: translateZ(0);
+    transition: transform 0.1s ease-out, box-shadow 0.3s;
+    backdrop-filter: blur(5px);
 }
 
-.skill-card:hover {
-    background: rgba(0, 255, 255, 0.2);
-    transform: scale(1.05) skewX(-5deg); /* 悬停时倾斜 */
-    box-shadow: 0 0 20px #0ff;
+/* 卡片内部文字悬浮，产生层次感 */
+.skill-card span {
+    display: block;
+    transform: translateZ(30px); /* 文字比卡片背景更突出一层 */
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+/* 装饰性边框高光 */
+.skill-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translateZ(10px);
+    pointer-events: none;
 }
 
 @keyframes glitch {
-    0% { transform: translate(0); }
-    20% { transform: translate(-2px, 2px); }
-    40% { transform: translate(-2px, -2px); }
-    60% { transform: translate(2px, 2px); }
-    80% { transform: translate(2px, -2px); }
-    100% { transform: translate(0); }
+    0% { transform: translate(0) translateZ(50px); }
+    20% { transform: translate(-2px, 2px) translateZ(50px); }
+    40% { transform: translate(-2px, -2px) translateZ(50px); }
+    60% { transform: translate(2px, 2px) translateZ(50px); }
+    80% { transform: translate(2px, -2px) translateZ(50px); }
+    100% { transform: translate(0) translateZ(50px); }
 }
