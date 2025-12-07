@@ -10,6 +10,7 @@ body, html {
     cursor: crosshair;
     perspective: 1000px; 
     user-select: none;
+    image-rendering: optimizeSpeed; 
 }
 
 /* 扫描线 */
@@ -137,7 +138,7 @@ h1.glitch {
     opacity: 0.6;
     letter-spacing: 2px;
     animation: pulse 4s infinite ease-in-out;
-    color: #ff3366;
+    color: #ff3366; 
 }
 
 @keyframes glitch {
