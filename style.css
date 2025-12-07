@@ -1,9 +1,9 @@
-/* --- 全局设置 --- */
+/* --- 全局 --- */
 body, html {
     margin: 0;
     padding: 0;
     height: 100%;
-    background-color: #020205; /* 宇宙深空色 */
+    background-color: #020205; 
     color: #0ff;
     font-family: 'Courier New', monospace;
     overflow: hidden;
@@ -12,7 +12,7 @@ body, html {
     user-select: none;
 }
 
-/* CRT 扫描线 */
+/* 扫描线 */
 body::after {
     content: " ";
     display: block;
@@ -30,7 +30,7 @@ body::after {
     z-index: 1;
 }
 
-/* --- UI 动画 --- */
+/* UI 动画 */
 .interface {
     position: relative;
     z-index: 5;
@@ -44,7 +44,7 @@ body::after {
     transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* HUD 边框 */
+/* HUD */
 .hud-corner {
     position: fixed;
     width: 30px;
@@ -68,17 +68,17 @@ body::after {
     display: flex;
     gap: 30px;
     font-size: 12px;
-    opacity: 0.7;
+    opacity: 0.8;
     letter-spacing: 2px;
     pointer-events: none;
-    text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+    text-shadow: 0 0 5px rgba(255, 50, 100, 0.5); 
 }
 
 /* 标题 */
 h1.glitch {
     font-size: 4rem;
     text-shadow: 2px 2px #f0f;
-    animation: glitch 3s infinite alternate-reverse; /* 缓慢呼吸故障 */
+    animation: glitch 3s infinite alternate-reverse; 
     pointer-events: auto; 
     transform: translateZ(60px); 
     margin-bottom: 0;
@@ -93,7 +93,7 @@ h1.glitch {
     color: #e0f0ff;
 }
 
-/* 技能卡片 */
+/* 卡片 */
 .skills-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -130,13 +130,14 @@ h1.glitch {
     box-shadow: 0 0 25px rgba(255, 0, 255, 0.3);
 }
 
+/* 指引 */
 .instruction {
     margin-top: 4rem;
     font-size: 0.7rem;
-    opacity: 0.5;
+    opacity: 0.6;
     letter-spacing: 2px;
     animation: pulse 4s infinite ease-in-out;
-    color: #88ccff;
+    color: #ff3366;
 }
 
 @keyframes glitch {
@@ -149,7 +150,7 @@ h1.glitch {
 
 @keyframes pulse {
     0%, 100% { opacity: 0.3; }
-    50% { opacity: 0.7; }
+    50% { opacity: 0.8; }
 }
 
 @media (max-width: 768px) {
