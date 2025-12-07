@@ -119,7 +119,7 @@ class Particle {
             this.vy *= 0.95;
         }
 
-        // --- 3. 物理互动 (核心修复) ---
+        // --- 3. 物理互动 ---
         for (let other of allParticles) {
             if (other === this || other.markedForDeletion) continue;
             
@@ -131,7 +131,6 @@ class Particle {
             const distSq = dx*dx + dy*dy;
             const dist = Math.sqrt(distSq);
 
-            // 碰撞判定 (宽松一点)
             const minDist = (this.size + other.size) * 0.8; 
 
             if (dist < minDist) {
@@ -145,8 +144,7 @@ class Particle {
                     continue;
                 }
                 
-                // B. 恒星 vs 小物体 (核心修复部分)
-                // 只要我是恒星，且对方不是恒星，也不是正在飞的火箭 -> 必须吃掉
+                // B. 恒星 vs 小物体
                 if (this.isStar && !other.isStar) {
                     if (other.isProbe && other.fuel > 0) {
                          // 火箭飞行中无敌
@@ -157,9 +155,7 @@ class Particle {
                 }
             }
 
-            // 引力计算 (只受恒星吸引)
             if (other.isStar) {
-                // 防止极近距离引力弹射
                 const safeDistSq = Math.max(distSq, 100); 
                 if (dist < 1200) {
                     const force = G * other.mass / safeDistSq;
@@ -200,16 +196,11 @@ class Particle {
     }
 
     absorb(prey) {
-        // 吃掉！
         this.mass += prey.mass;
         this.updateSize();
-        // 光晕特效
         effects.push(new LightFlare(this.x, this.y, this.color, 0.5));
-        
         prey.markedForDeletion = true; 
-        // 强制把猎物移出屏幕，防止下一帧还没被垃圾回收时继续参与物理计算
         prey.x = -9999; 
-        
         updateCounter();
     }
 
@@ -232,7 +223,6 @@ class Particle {
     }
 
     downgrade() {
-        // 恒星死亡变成灰色小行星
         this.isStar = false;
         this.color = '#555'; 
         this.glow = 0;
@@ -243,13 +233,13 @@ class Particle {
     }
 
     convertToDebris() {
-        // 火箭失去动力变成残骸
-        this.isProbe = false; // 关键：取消probe标记，让它变成普通小物体
-        this.isDebris = true; // 标记为残骸（仅用于绘制三角形外观）
+        this.isProbe = false; 
+        this.isDebris = true; 
         this.fuel = 0;
         this.color = '#444'; 
         this.mass = 3; 
-        // 保持惯性，不要急刹车
+        this.vx *= 0.6;
+        this.vy *= 0.6;
         updateCounter();
     }
 
@@ -276,12 +266,12 @@ class Particle {
         probe.vy = this.vy + Math.sin(tangentAngle) * initialSpeed;
 
         particles.push(probe);
-        effects.push(new Shockwave(probe.x, probe.y, '#ffffff', 1)); 
+        // 关键修改：发射特效改为粒子爆炸，不再是圆环
+        effects.push(new ParticleExplosion(probe.x, probe.y, '#ffffff')); 
         updateCounter();
     }
 
     draw() {
-        // A. 探测器 / 残骸 (三角形)
         if (this.isProbe || this.isDebris) {
             const angle = Math.atan2(this.vy, this.vx);
             ctx.save();
@@ -307,12 +297,10 @@ class Particle {
             return;
         }
 
-        // B. 连线 (仅恒星)
         if (this.isStar) {
-            // 省略
+            // 连线逻辑
         }
 
-        // C. 星体
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
@@ -362,7 +350,7 @@ class ThrustParticle {
     }
 }
 
-// --- 特效2：锐利冲击波 (发射) ---
+// --- 特效2：锐利冲击波 (保留类定义但不用于发射) ---
 class Shockwave {
     constructor(x, y, color, intensity = 1) {
         this.x = x;
@@ -413,7 +401,7 @@ class LightFlare {
     }
 }
 
-// --- 特效4：粒子爆炸 (湮灭/死亡) ---
+// --- 特效4：粒子爆炸 (湮灭/死亡/发射) ---
 class ParticleExplosion {
     constructor(x, y, color) {
         this.x = x;
@@ -423,7 +411,7 @@ class ParticleExplosion {
         this.sparks = [];
         for(let i=0; i<8; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 4;
+            const speed = Math.random() * 3 + 1;
             this.sparks.push({
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
@@ -436,8 +424,8 @@ class ParticleExplosion {
         this.sparks.forEach(s => {
             s.x += s.vx;
             s.y += s.vy;
-            s.vx *= 0.95;
-            s.vy *= 0.95;
+            s.vx *= 0.9;
+            s.vy *= 0.9;
         });
     }
     draw() {
