@@ -384,17 +384,17 @@ function drawConnections() {
                 // 颜色逻辑：混合色
                 if (p1.isStar && p2.isStar) {
                     ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.3})`;
-                    ctx.lineWidth = 0.8;
+                    ctx.lineWidth = 1;
                 } else if (p1.isStar || p2.isStar) {
                     // 恒星连小行星
                     const starColor = p1.isStar ? p1.color : p2.color;
                     ctx.strokeStyle = starColor; // 简单直接用恒星色
                     ctx.globalAlpha = alpha * 0.2;
-                    ctx.lineWidth = 0.5;
+                    ctx.lineWidth = 0.8;
                 } else {
                     // 小行星连小行星
                     ctx.strokeStyle = `rgba(100, 200, 255, ${alpha * 0.15})`;
-                    ctx.lineWidth = 0.3;
+                    ctx.lineWidth = 0.5;
                 }
                 
                 ctx.stroke();
