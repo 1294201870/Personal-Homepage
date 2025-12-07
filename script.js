@@ -8,12 +8,12 @@ let particles = [];
 let effects = []; 
 const INITIAL_ASTEROIDS = 40;
 const G = 0.5; 
-const LAUNCH_THRESHOLD = 120; // 发射门槛
+const LAUNCH_THRESHOLD = 120; 
 
 // 恒星颜色
 const STAR_COLORS = ['#ff3366', '#00f0ff', '#ffcc00', '#cc00ff', '#ffffff'];
 
-// --- 鼠标交互 (蓄力系统) ---
+// --- 鼠标交互 ---
 const mouse = { x: 0, y: 0, isDown: false, charge: 30 };
 const MAX_CHARGE = 200; 
 
@@ -52,8 +52,7 @@ function spawnStarFromMouse() {
 function updateCounter() {
     const el = document.getElementById('particle-counter');
     const starCount = particles.filter(p => p.isStar).length;
-    // 只有有燃料的才算作 Active Probes
-    const probeCount = particles.filter(p => p.isProbe).length;
+    const probeCount = particles.filter(p => p.isProbe && p.fuel > 0).length;
     if(el) el.innerText = `STARS: ${starCount} // PROBES: ${probeCount} // TOTAL: ${particles.length}`;
 }
 
@@ -69,10 +68,8 @@ class Particle {
         this.vx = (Math.random() - 0.5) * 0.5; 
         this.vy = (Math.random() - 0.5) * 0.5;
         this.fuel = 0;
-        
-        // 状态标记
-        this.isProbe = false; // 正在飞行的火箭
-        this.isDebris = false; // 火箭残骸 (无动力)
+        this.isProbe = false;
+        this.isDebris = false; 
 
         if (this.isStar) {
             this.mass = 80;
@@ -83,7 +80,6 @@ class Particle {
             this.glow = 30;
             this.probeTimer = 0;
         } else {
-            // 小行星/尘埃
             this.mass = 1; 
             this.size = Math.random() * 1.5 + 0.5;
             this.color = `rgba(100, 200, 255, ${Math.random() * 0.5 + 0.3})`;
@@ -92,12 +88,10 @@ class Particle {
     }
 
     update(allParticles) {
-        // --- 1. 探测器逻辑 (有动力) ---
+        // --- 1. 探测器逻辑 ---
         if (this.isProbe) {
             if (this.fuel > 0) {
                 this.fuel--; 
-                
-                // 动力学：缓慢加速
                 const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
                 const maxProbeSpeed = 1.8; 
                 
@@ -108,41 +102,37 @@ class Particle {
                     this.vy += Math.sin(angle) * thrust;
                 }
                 
-                // 尾焰
                 if (Math.random() < 0.4) {
                     effects.push(new ThrustParticle(this.x, this.y, this.vx, this.vy));
                 }
-
             } else {
-                // 燃料耗尽 -> 转为残骸
                 this.convertToDebris();
             }
         }
 
         // --- 2. 速度阻力 ---
-        // 探测器有燃料时不受此限制(由推力逻辑控制)，恒星和垃圾受限
         const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-        const globalLimit = this.isProbe ? 5 : (this.isStar ? 1 : 2); 
+        const globalLimit = (this.isProbe && this.fuel > 0) ? 5 : (this.isStar ? 1 : 2); 
         
         if (speed > globalLimit) {
             this.vx *= 0.95;
             this.vy *= 0.95;
         }
 
-        // --- 3. 物理互动 ---
+        // --- 3. 物理互动 (核心修复) ---
         for (let other of allParticles) {
             if (other === this || other.markedForDeletion) continue;
             
-            // 只有恒星产生引力
-            if (!other.isStar) continue;
+            // 只有恒星参与核心交互逻辑
+            if (!other.isStar && !this.isStar) continue;
 
             const dx = other.x - this.x;
             const dy = other.y - this.y;
             const distSq = dx*dx + dy*dy;
             const dist = Math.sqrt(distSq);
 
-            // 碰撞检测 (范围扩大至 0.85，防止穿模)
-            const minDist = (this.size + other.size) * 0.85;
+            // 碰撞判定 (宽松一点)
+            const minDist = (this.size + other.size) * 0.8; 
 
             if (dist < minDist) {
                 // A. 恒星 vs 恒星
@@ -155,22 +145,27 @@ class Particle {
                     continue;
                 }
                 
-                // B. 恒星吞噬非恒星
+                // B. 恒星 vs 小物体 (核心修复部分)
+                // 只要我是恒星，且对方不是恒星，也不是正在飞的火箭 -> 必须吃掉
                 if (this.isStar && !other.isStar) {
-                    // 只有【正在飞行】的探测器才无敌
-                    if (other.isProbe) continue; 
-                    
-                    // 其他统统吃掉 (小行星、死星、残骸)
-                    this.absorb(other);
+                    if (other.isProbe && other.fuel > 0) {
+                         // 火箭飞行中无敌
+                    } else {
+                        this.absorb(other);
+                    }
                     continue;
                 }
             }
 
-            // 引力计算
-            if (dist > 10 && dist < 1200) {
-                const force = G * other.mass / distSq;
-                this.vx += (dx / dist) * force;
-                this.vy += (dy / dist) * force;
+            // 引力计算 (只受恒星吸引)
+            if (other.isStar) {
+                // 防止极近距离引力弹射
+                const safeDistSq = Math.max(distSq, 100); 
+                if (dist < 1200) {
+                    const force = G * other.mass / safeDistSq;
+                    this.vx += (dx / dist) * force;
+                    this.vy += (dy / dist) * force;
+                }
             }
         }
 
@@ -205,11 +200,16 @@ class Particle {
     }
 
     absorb(prey) {
+        // 吃掉！
         this.mass += prey.mass;
         this.updateSize();
-        // 吞噬特效：柔和光晕 (不是圆环)
-        effects.push(new LightFlare(this.x, this.y, this.color, 0.6));
-        prey.markedForDeletion = true;
+        // 光晕特效
+        effects.push(new LightFlare(this.x, this.y, this.color, 0.5));
+        
+        prey.markedForDeletion = true; 
+        // 强制把猎物移出屏幕，防止下一帧还没被垃圾回收时继续参与物理计算
+        prey.x = -9999; 
+        
         updateCounter();
     }
 
@@ -220,43 +220,36 @@ class Particle {
         this.updateSize();
         enemy.updateSize();
         
-        // 互斥
         const dx = this.x - enemy.x;
         const dy = this.y - enemy.y;
         const dist = Math.sqrt(dx*dx + dy*dy) || 1;
         this.vx += (dx/dist) * 0.05;
         this.vy += (dy/dist) * 0.05;
         
-        // 湮灭特效：火花
         if (Math.random() < 0.2) {
             effects.push(new ParticleExplosion((this.x+enemy.x)/2, (this.y+enemy.y)/2, '#ffffff'));
         }
     }
 
     downgrade() {
+        // 恒星死亡变成灰色小行星
         this.isStar = false;
         this.color = '#555'; 
         this.glow = 0;
         this.mass = 5; 
         this.size = 3;
-        // 死亡特效：爆炸
         effects.push(new ParticleExplosion(this.x, this.y, '#aaaaaa'));
         updateCounter();
     }
 
     convertToDebris() {
-        // 状态转换：不再是 Probe，变成 Debris
-        this.isProbe = false;
-        this.isDebris = true;
-        
+        // 火箭失去动力变成残骸
+        this.isProbe = false; // 关键：取消probe标记，让它变成普通小物体
+        this.isDebris = true; // 标记为残骸（仅用于绘制三角形外观）
         this.fuel = 0;
-        this.color = '#444444'; // 深灰色
+        this.color = '#444'; 
         this.mass = 3; 
-        
-        // 关键修复：只减速一次，不归零，保持漂浮
-        this.vx *= 0.6;
-        this.vy *= 0.6;
-        
+        // 保持惯性，不要急刹车
         updateCounter();
     }
 
@@ -271,7 +264,6 @@ class Particle {
         probe.mass = 5;
         probe.fuel = 800; 
         
-        // 切向发射
         const angle = Math.random() * Math.PI * 2;
         const offset = this.size + 8;
         probe.x = this.x + Math.cos(angle) * offset;
@@ -284,8 +276,7 @@ class Particle {
         probe.vy = this.vy + Math.sin(tangentAngle) * initialSpeed;
 
         particles.push(probe);
-        // 发射特效：亮白光晕
-        effects.push(new LightFlare(probe.x, probe.y, '#ffffff', 0.8)); 
+        effects.push(new Shockwave(probe.x, probe.y, '#ffffff', 1)); 
         updateCounter();
     }
 
@@ -303,12 +294,11 @@ class Particle {
             ctx.lineTo(-this.size, this.size * 0.6);
             ctx.closePath();
             
-            ctx.fillStyle = this.isProbe ? (this.fuel > 0 ? '#cccccc' : '#555') : '#444'; 
+            ctx.fillStyle = this.isProbe ? '#cccccc' : '#555555'; 
             ctx.fill();
             
-            // 残骸边框
             if (this.isDebris) {
-                ctx.strokeStyle = '#222';
+                ctx.strokeStyle = '#333';
                 ctx.lineWidth = 0.5;
                 ctx.stroke();
             }
@@ -317,7 +307,12 @@ class Particle {
             return;
         }
 
-        // B. 星体
+        // B. 连线 (仅恒星)
+        if (this.isStar) {
+            // 省略
+        }
+
+        // C. 星体
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
@@ -331,7 +326,7 @@ class Particle {
     }
 }
 
-// --- 特效1：尾焰 (粒子) ---
+// --- 特效1：尾焰 ---
 class ThrustParticle {
     constructor(x, y, parentVx, parentVy) {
         this.x = x;
@@ -367,7 +362,33 @@ class ThrustParticle {
     }
 }
 
-// --- 特效2：实心光晕 (用于吞噬/发射) ---
+// --- 特效2：锐利冲击波 (发射) ---
+class Shockwave {
+    constructor(x, y, color, intensity = 1) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.radius = 1;
+        this.maxRadius = 20 * intensity;
+        this.life = 1.0;
+        this.lineWidth = 2;
+    }
+    update() {
+        this.radius += 2; 
+        this.life -= 0.05;
+    }
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = this.color;
+        ctx.globalAlpha = this.life;
+        ctx.lineWidth = this.lineWidth;
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+// --- 特效3：柔和光晕 (吞噬/融合) ---
 class LightFlare {
     constructor(x, y, color, sizeMultiplier = 1) {
         this.x = x;
@@ -379,11 +400,11 @@ class LightFlare {
     }
     update() {
         this.size += 1.5;
-        this.life -= 0.08;
+        this.life -= 0.04;
     }
     draw() {
         if (this.life <= 0) return;
-        ctx.globalAlpha = this.life * 0.8;
+        ctx.globalAlpha = this.life * 0.6;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
@@ -392,13 +413,7 @@ class LightFlare {
     }
 }
 
-// --- 特效3：蓄力光圈 (您喜欢的圆环) ---
-// 仅用于鼠标蓄力
-class ChargeRing {
-    // 此类逻辑直接写在 animate 中
-}
-
-// --- 特效4：粒子爆炸 (用于湮灭/死亡) ---
+// --- 特效4：粒子爆炸 (湮灭/死亡) ---
 class ParticleExplosion {
     constructor(x, y, color) {
         this.x = x;
@@ -408,7 +423,7 @@ class ParticleExplosion {
         this.sparks = [];
         for(let i=0; i<8; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 3 + 1;
+            const speed = Math.random() * 4;
             this.sparks.push({
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
@@ -421,8 +436,8 @@ class ParticleExplosion {
         this.sparks.forEach(s => {
             s.x += s.vx;
             s.y += s.vy;
-            s.vx *= 0.9;
-            s.vy *= 0.9;
+            s.vx *= 0.95;
+            s.vy *= 0.95;
         });
     }
     draw() {
@@ -451,11 +466,10 @@ function animate() {
     ctx.fillStyle = 'rgba(2, 2, 5, 0.4)'; 
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // --- 0. 绘制蓄力光圈 (保留您喜欢的特效) ---
+    // --- 0. 蓄力光圈 ---
     if (mouse.isDown) {
         mouse.charge = Math.min(mouse.charge + 2, MAX_CHARGE); 
         
-        // 内圈虚线
         ctx.beginPath();
         ctx.arc(mouse.x, mouse.y, Math.sqrt(mouse.charge), 0, Math.PI * 2);
         ctx.strokeStyle = '#fff';
@@ -464,13 +478,11 @@ function animate() {
         ctx.stroke();
         ctx.setLineDash([]);
         
-        // 外圈光晕
         ctx.beginPath();
         ctx.arc(mouse.x, mouse.y, Math.sqrt(mouse.charge) + 5, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(255, 255, 255, 0.3)`;
         ctx.stroke();
         
-        // 能量汇聚装饰
         const time = Date.now() / 100;
         ctx.beginPath();
         ctx.arc(mouse.x, mouse.y, Math.sqrt(mouse.charge) + 15 + Math.sin(time)*5, 0, Math.PI * 2);
@@ -478,7 +490,7 @@ function animate() {
         ctx.stroke();
     }
 
-    // --- 1. 连线特效 (仅恒星) ---
+    // --- 1. 连线特效 ---
     const stars = particles.filter(p => p.isStar);
     for (let i = 0; i < stars.length; i++) {
         for (let j = i + 1; j < stars.length; j++) {
