@@ -3,16 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System.User // 1294201870</title>
+    <title>SYSTEM.USER // 1294201870</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- 背景粒子画布 -->
     <canvas id="particles-canvas"></canvas>
     
+    <!-- FPS 战术 HUD 层 -->
+    <div class="hud-overlay">
+        <div class="hud-corner top-left"></div>
+        <div class="hud-corner top-right"></div>
+        <div class="hud-corner bottom-left"></div>
+        <div class="hud-corner bottom-right"></div>
+        <div class="hud-status">
+            <span>SYS: ONLINE</span>
+            <span>CPU: OPTIMAL</span>
+            <span>TARGET: ACQUIRED</span>
+        </div>
+    </div>
+
+    <!-- 内容层 -->
     <div class="interface">
         <header>
             <h1 class="glitch" data-text="1294201870">1294201870</h1>
-            <p class="subtitle">COMPUTER_SCIENCE_OPERATIVE</p>
+            <p class="subtitle">AI | SECURITY | GAMEDEV</p>
         </header>
 
         <section class="skills-grid">

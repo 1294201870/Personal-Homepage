@@ -6,38 +6,104 @@ body, html {
     color: #0ff;
     font-family: 'Courier New', monospace;
     overflow: hidden;
+    cursor: crosshair; /* FPS 准星光标 */
+}
+
+/* --- CRT 扫描线滤镜 --- */
+body::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 10;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
 }
 
 #particles-canvas {
     position: absolute;
-    top: 0;
-    left: 0;
+    top: 0; left: 0;
     z-index: 1;
 }
 
 .interface {
     position: relative;
-    z-index: 2;
+    z-index: 5;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100%;
-    pointer-events: none; /* 让鼠标事件穿透到 Canvas */
+    pointer-events: none; /* 让鼠标点击穿透到 Canvas */
 }
 
+/* --- HUD 战术界面 --- */
+.hud-corner {
+    position: fixed;
+    width: 40px;
+    height: 40px;
+    border: 2px solid #0ff;
+    z-index: 4;
+    box-shadow: 0 0 8px #0ff;
+    opacity: 0.7;
+}
+.top-left { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+.top-right { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+.bottom-left { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+.bottom-right { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+
+.hud-status {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4;
+    display: flex;
+    gap: 20px;
+    font-size: 12px;
+    opacity: 0.8;
+    text-shadow: 0 0 5px #0ff;
+}
+
+/* --- 故障文字特效 --- */
 h1.glitch {
     font-size: 4rem;
     text-shadow: 2px 2px #f0f;
     animation: glitch 1s infinite alternate;
+    pointer-events: auto; /* 标题可以交互 */
+}
+
+.subtitle {
+    letter-spacing: 5px;
+    font-size: 1.2rem;
+    margin-top: -10px;
+    opacity: 0.8;
+}
+
+/* --- 技能卡片 --- */
+.skills-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-top: 2rem;
+    pointer-events: auto;
 }
 
 .skill-card {
     border: 1px solid #0ff;
-    padding: 1rem;
-    margin: 0.5rem;
-    background: rgba(0, 255, 255, 0.1);
-    box-shadow: 0 0 10px #0ff;
+    padding: 1rem 2rem;
+    background: rgba(0, 20, 20, 0.6); /* 玻璃质感 */
+    box-shadow: 0 0 5px #0ff;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.skill-card:hover {
+    background: rgba(0, 255, 255, 0.2);
+    transform: scale(1.05) skewX(-5deg); /* 悬停时倾斜 */
+    box-shadow: 0 0 20px #0ff;
 }
 
 @keyframes glitch {
