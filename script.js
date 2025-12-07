@@ -6,7 +6,7 @@ canvas.height = window.innerHeight;
 // --- 宇宙常数 ---
 let particles = [];
 let effects = []; 
-const INITIAL_ASTEROIDS = 250; // 增加小星星数量
+const INITIAL_ASTEROIDS = 300; // 增加小星星数量
 const G = 0.5; 
 const LAUNCH_THRESHOLD = 120; 
 
@@ -557,7 +557,7 @@ function animate() {
     });
 
     // 自动补充小行星
-    if (particles.length < 180) { // 稍微增加保留数量
+    if (particles.length < 280) { // 稍微增加保留数量
         particles.push(new Particle());
     }
     
