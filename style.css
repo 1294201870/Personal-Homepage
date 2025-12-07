@@ -1,17 +1,18 @@
+/* --- 全局基础设置 --- */
 body, html {
     margin: 0;
     padding: 0;
     height: 100%;
-    background-color: #050505;
-    color: #0ff;
+    background-color: #050505; /* 深空黑 */
+    color: #0ff; /* 赛博青 */
     font-family: 'Courier New', monospace;
-    overflow: hidden;
-    cursor: crosshair;
-    /* 核心：开启全局 3D 透视深度 */
-    perspective: 1000px; 
+    overflow: hidden; /* 禁止滚动 */
+    cursor: crosshair; /* 战术准星 */
+    perspective: 1000px; /* 开启 3D 透视 */
+    user-select: none; /* 禁止文字选中 (为了游戏体验) */
 }
 
-/* CRT 扫描线 */
+/* --- CRT 扫描线滤镜 (复古科幻感) --- */
 body::after {
     content: " ";
     display: block;
@@ -20,15 +21,17 @@ body::after {
     background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
     z-index: 10;
     background-size: 100% 2px, 3px 100%;
-    pointer-events: none;
+    pointer-events: none; /* 鼠标穿透 */
 }
 
+/* --- 画布层 --- */
 #particles-canvas {
     position: absolute;
     top: 0; left: 0;
     z-index: 1;
 }
 
+/* --- UI 界面容器 --- */
 .interface {
     position: relative;
     z-index: 5;
@@ -37,13 +40,12 @@ body::after {
     align-items: center;
     justify-content: center;
     height: 100%;
-    pointer-events: none; 
-    /* 允许整个界面层进行 3D 倾斜 */
-    transform-style: preserve-3d; 
-    transition: transform 0.1s ease-out; 
+    pointer-events: none; /* 让鼠标事件穿透到 Canvas (除非点到卡片) */
+    transform-style: preserve-3d; /* 保持 3D 空间 */
+    transition: transform 0.1s ease-out;
 }
 
-/* HUD 样式 */
+/* --- HUD 战术边框 --- */
 .hud-corner {
     position: fixed;
     width: 40px;
@@ -52,12 +54,14 @@ body::after {
     z-index: 4;
     box-shadow: 0 0 8px #0ff;
     opacity: 0.7;
+    pointer-events: none;
 }
 .top-left { top: 20px; left: 20px; border-right: none; border-bottom: none; }
 .top-right { top: 20px; right: 20px; border-left: none; border-bottom: none; }
 .bottom-left { bottom: 20px; left: 20px; border-right: none; border-top: none; }
 .bottom-right { bottom: 20px; right: 20px; border-left: none; border-top: none; }
 
+/* --- 底部状态栏 --- */
 .hud-status {
     position: fixed;
     bottom: 20px;
@@ -65,65 +69,72 @@ body::after {
     transform: translateX(-50%);
     z-index: 4;
     display: flex;
-    gap: 20px;
-    font-size: 12px;
-    opacity: 0.8;
+    gap: 30px;
+    font-size: 14px;
+    opacity: 0.9;
     text-shadow: 0 0 5px #0ff;
+    pointer-events: none;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 5px 20px;
+    border: 1px solid rgba(0, 255, 255, 0.3);
 }
 
-/* 标题样式 - 增加Z轴悬浮 */
+/* --- 标题故障风 --- */
 h1.glitch {
     font-size: 4rem;
-    text-shadow: 2px 2px #f0f;
+    text-shadow: 2px 2px #f0f; /* 品红撞色 */
     animation: glitch 1s infinite alternate;
     pointer-events: auto; 
-    transform: translateZ(50px); /* 标题浮起来 */
+    transform: translateZ(50px); /* 悬浮 */
+    margin-bottom: 0.5rem;
 }
 
 .subtitle {
     letter-spacing: 5px;
     font-size: 1.2rem;
-    margin-top: -10px;
+    margin-top: 0;
     opacity: 0.8;
-    transform: translateZ(30px); /* 副标题稍微浮一点 */
+    transform: translateZ(30px);
+    color: #f0f;
 }
 
-/* 技能网格 */
+/* --- 技能卡片网格 --- */
 .skills-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr); /* 两列 */
     gap: 2rem;
-    margin-top: 3rem;
-    pointer-events: auto;
-    perspective: 1000px; /* 卡片容器透视 */
+    margin-top: 4rem;
+    pointer-events: auto; /* 允许点击卡片 */
+    perspective: 1000px;
 }
 
-/* --- 3D 全息卡片样式 --- */
+/* --- 3D 全息卡片 --- */
 .skill-card {
     position: relative;
     border: 1px solid #0ff;
     padding: 1.5rem 2.5rem;
-    background: rgba(0, 20, 20, 0.4);
+    background: rgba(0, 20, 20, 0.5); /* 半透明深色 */
     box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
     text-align: center;
     cursor: pointer;
     
-    /* 3D 变换设置 */
+    /* 3D 核心 */
     transform-style: preserve-3d;
     transform: translateZ(0);
-    transition: transform 0.1s ease-out, box-shadow 0.3s;
-    backdrop-filter: blur(5px);
+    transition: transform 0.1s ease-out, border-color 0.3s, box-shadow 0.3s;
+    backdrop-filter: blur(4px);
 }
 
-/* 卡片内部文字悬浮，产生层次感 */
+/* 卡片内的文字 */
 .skill-card span {
     display: block;
-    transform: translateZ(30px); /* 文字比卡片背景更突出一层 */
+    transform: translateZ(30px); /* 文字比背景凸出 */
     font-weight: bold;
     letter-spacing: 2px;
+    color: #fff;
 }
 
-/* 装饰性边框高光 */
+/* 卡片高光装饰 */
 .skill-card::before {
     content: '';
     position: absolute;
@@ -133,6 +144,16 @@ h1.glitch {
     pointer-events: none;
 }
 
+/* 操作提示文字 */
+.instruction {
+    margin-top: 3rem;
+    font-size: 0.8rem;
+    opacity: 0.5;
+    letter-spacing: 1px;
+    animation: pulse 2s infinite;
+}
+
+/* --- 动画关键帧 --- */
 @keyframes glitch {
     0% { transform: translate(0) translateZ(50px); }
     20% { transform: translate(-2px, 2px) translateZ(50px); }
@@ -140,4 +161,19 @@ h1.glitch {
     60% { transform: translate(2px, 2px) translateZ(50px); }
     80% { transform: translate(2px, -2px) translateZ(50px); }
     100% { transform: translate(0) translateZ(50px); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+}
+
+/* 适配移动端 */
+@media (max-width: 768px) {
+    .skills-grid {
+        grid-template-columns: 1fr; /* 手机上一列 */
+    }
+    h1.glitch {
+        font-size: 2.5rem;
+    }
 }

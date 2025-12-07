@@ -7,20 +7,27 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- 游戏/粒子画布 -->
     <canvas id="particles-canvas"></canvas>
     
+    <!-- FPS 战术 HUD 层 -->
     <div class="hud-overlay">
+        <!-- 四角边框 -->
         <div class="hud-corner top-left"></div>
         <div class="hud-corner top-right"></div>
         <div class="hud-corner bottom-left"></div>
         <div class="hud-corner bottom-right"></div>
+        
+        <!-- 底部状态栏 & 分数板 -->
         <div class="hud-status">
             <span>SYS: ONLINE</span>
-            <span>CPU: OPTIMAL</span>
+            <!-- 核心：动态分数显示 -->
+            <span id="score-display" style="color: #f0f; font-weight: bold; text-shadow: 0 0 10px #f0f;">SCORE: 0000</span>
             <span>TARGET: ACQUIRED</span>
         </div>
     </div>
 
+    <!-- 主要内容层 -->
     <div class="interface">
         <header>
             <h1 class="glitch" data-text="1294201870">1294201870</h1>
@@ -28,12 +35,16 @@
         </header>
 
         <section class="skills-grid">
-            <!-- 注意：这里用 span 包裹文字，方便做分层 3D 效果 -->
+            <!-- 技能卡片 (包裹 span 以实现 3D 悬浮文字) -->
             <div class="skill-card"><span>AI & Machine Learning</span></div>
             <div class="skill-card"><span>Network Security</span></div>
             <div class="skill-card"><span>Database Systems</span></div>
             <div class="skill-card"><span>Game Design</span></div>
         </section>
+        
+        <div class="instruction">
+            [ HOLD CLICK ] TO CHARGE GRAVITY WELL // [ RELEASE ] TO DETONATE
+        </div>
     </div>
 
     <script src="script.js"></script>
