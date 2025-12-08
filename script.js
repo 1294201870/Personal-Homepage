@@ -3,23 +3,72 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// --- 宇宙常数 ---
-let particles = [];
-let effects = []; 
-const INITIAL_ASTEROIDS = 300; // 增加小星星数量
-const G = 0.5; 
-const LAUNCH_THRESHOLD = 120; 
+// ==========================================
+// --- 🚀 全局配置中心 (调试参数请改这里) ---
+// ==========================================
+const CONFIG = {
+    // --- 🌌 宇宙物理 ---
+    G: 0.5,                       // 引力常数 (影响引力强弱)
+    FRICTION: 0.95,               // 阻力系数 (速度过快时的减速比例)
+    INITIAL_ASTEROIDS: 60,        // 初始小行星数量
+    MIN_PARTICLE_COUNT: 40,       // 维持的最少粒子数 (低于此值自动补充)
+    
+    // --- ☀️ 恒星 (Star) ---
+    STAR: {
+        COLORS: ['#ff3366', '#00f0ff', '#ffcc00', '#cc00ff', '#ffffff'],
+        INIT_MASS: 80,            // 默认恒星质量
+        MIN_MASS: 20,             // 坍缩阈值 (低于此质量变死星)
+        MAX_CHARGE_MASS: 200,     // 鼠标长按产生的最大质量
+        CHARGE_SPEED: 2,          // 鼠标蓄力速度
+        LAUNCH_THRESHOLD: 120,    // 发射火箭所需的最小质量
+        LAUNCH_COST: 10,          // 发射一次消耗的质量
+        LAUNCH_COOLDOWN: 500,     // 发射冷却 (帧数)
+        LAUNCH_CHANCE: 0.2,       // 冷却好后每帧发射的概率 (0-1)
+        SPAWN_CHANCE: 0.001,      // 自然随机生成恒星的概率
+        SPEED_LIMIT: 0.5,         // 恒星最大漂移速度 (越小越稳)
+    },
 
-// 恒星颜色
-const STAR_COLORS = ['#ff3366', '#00f0ff', '#ffcc00', '#cc00ff', '#ffffff'];
+    // --- 🚀 探测器/火箭 (Probe) ---
+    PROBE: {
+        FUEL: 800,                // 燃料寿命 (帧数)
+        MASS: 5,                  // 质量
+        SIZE: 4,                  // 大小
+        MAX_SPEED: 1.8,           // 最大巡航速度
+        THRUST: 0.05,             // 推进力加速度
+        COLOR_ACTIVE: '#aaaaaa',  // 有燃料时的颜色
+        COLOR_DEAD: '#444444',    // 没燃料时的颜色(残骸)
+    },
+
+    // --- 🌑 小行星/环境 (Asteroid) ---
+    ASTEROID: {
+        MASS: 1,                  // 基础质量
+        MIN_SIZE: 0.5,            // 最小随机大小
+        MAX_SIZE: 1.5,            // 最大随机大小
+        MAX_SPEED: 2.0,           // 最大速度限制
+        COLOR_PREFIX: 'rgba(100, 200, 255,', // 颜色前缀
+    },
+
+    // --- 🔗 连线特效 (Connections) ---
+    CONNECTION: {
+        MAX_DISTANCE: 120,        // 最大连线距离
+        OPACITY: 0.15,            // 连线基础透明度
+    }
+};
+
+// 预计算距离平方 (优化性能)
+const MAX_CONN_DIST_SQ = CONFIG.CONNECTION.MAX_DISTANCE * CONFIG.CONNECTION.MAX_DISTANCE;
+
 
 // --- 鼠标交互 ---
 const mouse = { x: 0, y: 0, isDown: false, charge: 30 };
-const MAX_CHARGE = 200; 
+
+let particles = [];
+let effects = [];
 
 window.addEventListener('mousemove', (e) => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
+    // UI 视差
     const interfaceContainer = document.querySelector('.interface');
     if (interfaceContainer) {
         const moveX = (mouse.x - window.innerWidth / 2) * -0.01; 
@@ -30,7 +79,7 @@ window.addEventListener('mousemove', (e) => {
 
 window.addEventListener('mousedown', () => {
     mouse.isDown = true;
-    mouse.charge = 30; 
+    mouse.charge = 30; // 重置初始蓄力
 });
 
 window.addEventListener('mouseup', () => {
@@ -40,8 +89,9 @@ window.addEventListener('mouseup', () => {
     }
 });
 
+// 手动生成
 function spawnStarFromMouse() {
-    const color = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+    const color = CONFIG.STAR.COLORS[Math.floor(Math.random() * CONFIG.STAR.COLORS.length)];
     const star = new Particle(mouse.x, mouse.y, true, color);
     star.mass = mouse.charge;
     star.updateSize();
@@ -49,18 +99,17 @@ function spawnStarFromMouse() {
     updateCounter();
 }
 
-// 随机自然生成恒星
+// 自然生成
 function spawnRandomStar() {
     const x = Math.random() * canvas.width;
     const y = Math.random() * canvas.height;
-    const color = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+    const color = CONFIG.STAR.COLORS[Math.floor(Math.random() * CONFIG.STAR.COLORS.length)];
     const star = new Particle(x, y, true, color);
-    star.isGrowing = true; // 标记为正在生长
+    star.isGrowing = true; 
     star.targetMass = 50 + Math.random() * 50;
-    star.mass = 5; // 初始很小
+    star.mass = 5; 
     star.updateSize();
     particles.push(star);
-    // 生成特效
     effects.push(new LightFlare(x, y, color, 0.5));
     updateCounter();
 }
@@ -72,7 +121,9 @@ function updateCounter() {
     if(el) el.innerText = `STARS: ${starCount} // PROBES: ${probeCount} // TOTAL: ${particles.length}`;
 }
 
-// --- 粒子类 ---
+// ==========================================
+// --- 粒子核心类 ---
+// ==========================================
 class Particle {
     constructor(x, y, isStar = false, color = null) {
         this.x = x || Math.random() * canvas.width;
@@ -81,6 +132,7 @@ class Particle {
         this.markedForDeletion = false;
         this.history = [];
         
+        // 初始速度
         this.vx = (Math.random() - 0.5) * 0.5; 
         this.vy = (Math.random() - 0.5) * 0.5;
         this.fuel = 0;
@@ -88,11 +140,11 @@ class Particle {
         // 状态标记
         this.isProbe = false;
         this.isDebris = false; 
-        this.isGrowing = false; // 是否处于出生生长阶段
+        this.isGrowing = false; 
         this.targetMass = 0;
 
         if (this.isStar) {
-            this.mass = 80;
+            this.mass = CONFIG.STAR.INIT_MASS;
             this.updateSize();
             this.color = color || '#ffffff';
             this.vx = 0; 
@@ -100,39 +152,39 @@ class Particle {
             this.glow = 30;
             this.probeTimer = 0;
         } else {
-            // 小行星
-            this.mass = 1; 
-            this.size = Math.random() * 1.5 + 0.5;
-            this.color = `rgba(100, 200, 255, ${Math.random() * 0.5 + 0.3})`;
+            // 小行星初始设定
+            this.mass = CONFIG.ASTEROID.MASS;
+            this.size = Math.random() * (CONFIG.ASTEROID.MAX_SIZE - CONFIG.ASTEROID.MIN_SIZE) + CONFIG.ASTEROID.MIN_SIZE;
+            this.color = `${CONFIG.ASTEROID.COLOR_PREFIX}${Math.random() * 0.5 + 0.3})`;
             this.glow = 0;
         }
     }
 
     update(allParticles) {
-        // --- 0. 生长逻辑 (自然生成) ---
+        // --- 0. 生长逻辑 ---
         if (this.isGrowing) {
             if (this.mass < this.targetMass) {
-                this.mass += 0.5; // 缓慢变大
+                this.mass += 0.5; 
                 this.updateSize();
             } else {
                 this.isGrowing = false;
             }
         }
 
-        // --- 1. 探测器逻辑 ---
+        // --- 1. 探测器动力学 ---
         if (this.isProbe) {
             if (this.fuel > 0) {
                 this.fuel--; 
-                const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-                const maxProbeSpeed = 1.8; 
                 
-                if (speed < maxProbeSpeed) {
+                // 缓慢加速
+                const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                if (speed < CONFIG.PROBE.MAX_SPEED) {
                     const angle = Math.atan2(this.vy, this.vx);
-                    const thrust = 0.05; 
-                    this.vx += Math.cos(angle) * thrust;
-                    this.vy += Math.sin(angle) * thrust;
+                    this.vx += Math.cos(angle) * CONFIG.PROBE.THRUST;
+                    this.vy += Math.sin(angle) * CONFIG.PROBE.THRUST;
                 }
                 
+                // 尾焰
                 if (Math.random() < 0.4) {
                     effects.push(new ThrustParticle(this.x, this.y, this.vx, this.vy));
                 }
@@ -141,28 +193,35 @@ class Particle {
             }
         }
 
-        // --- 2. 速度阻力 ---
+        // --- 2. 速度阻力限制 ---
         const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-        const globalLimit = (this.isProbe && this.fuel > 0) ? 5 : (this.isStar ? 1 : 2); 
-        
-        if (speed > globalLimit) {
-            this.vx *= 0.95;
-            this.vy *= 0.95;
+        // 不同物体的限速逻辑
+        let limit = CONFIG.ASTEROID.MAX_SPEED;
+        if (this.isStar) limit = CONFIG.STAR.SPEED_LIMIT;
+        if (this.isProbe && this.fuel > 0) limit = 5; // 活火箭略快
+
+        if (speed > limit) {
+            this.vx *= CONFIG.FRICTION;
+            this.vy *= CONFIG.FRICTION;
         }
 
-        // --- 3. 物理互动 ---
+        // --- 3. 物理互动 (N-Body & Collision) ---
         for (let other of allParticles) {
             if (other === this || other.markedForDeletion) continue;
             
+            // 优化：计算距离平方
             const dx = other.x - this.x;
             const dy = other.y - this.y;
             const distSq = dx*dx + dy*dy;
-            const dist = Math.sqrt(distSq);
 
-            // 碰撞检测 (双向判定优化版)
+            // 只有恒星产生引力场和碰撞判定核心
+            if (!other.isStar && !this.isStar) continue;
+
+            // 碰撞判定半径
             const minDist = (this.size + other.size) * 0.8;
+            const minDistSq = minDist * minDist;
 
-            if (dist < minDist) {
+            if (distSq < minDistSq) {
                 // A. 恒星 vs 恒星
                 if (this.isStar && other.isStar) {
                     if (this.color === other.color) {
@@ -173,23 +232,25 @@ class Particle {
                     continue;
                 }
                 
-                // B. 恒星吞噬万物
+                // B. 恒星吞噬小物体 (修复：只要对方不是恒星，且不是活火箭，就吃)
                 if (this.isStar && !other.isStar) {
                     if (other.isProbe && other.fuel > 0) continue; // 活火箭无敌
-                    this.absorb(other); // 吃小行星/死星/残骸
+                    this.absorb(other);
                     continue;
                 }
             }
 
             // 引力计算 (只受恒星吸引)
-            if (other.isStar && dist > 10 && dist < 1200) {
-                const force = G * other.mass / distSq;
+            // 距离限制：太近不计(防弹射)，太远不计
+            if (other.isStar && distSq > 100 && distSq < 1440000) { 
+                const dist = Math.sqrt(distSq);
+                const force = CONFIG.G * other.mass / distSq;
                 this.vx += (dx / dist) * force;
                 this.vy += (dy / dist) * force;
             }
         }
 
-        // --- 4. 移动与边界 ---
+        // --- 4. 移动与循环边界 ---
         this.x += this.vx;
         this.y += this.vy;
 
@@ -198,14 +259,16 @@ class Particle {
         if (this.y < -50) this.y = canvas.height + 50;
         if (this.y > canvas.height + 50) this.y = -50;
 
-        // --- 5. 恒星逻辑 ---
+        // --- 5. 恒星特有逻辑 ---
         if (this.isStar && !this.isGrowing) {
-            if (this.mass < 20) {
+            // 坍缩检查
+            if (this.mass < CONFIG.STAR.MIN_MASS) {
                 this.downgrade();
             } else {
+                // 发射火箭逻辑
                 this.probeTimer++;
-                if (this.probeTimer > 500 && this.mass > LAUNCH_THRESHOLD) {
-                    if (Math.random() < 0.2) { 
+                if (this.probeTimer > CONFIG.STAR.LAUNCH_COOLDOWN && this.mass > CONFIG.STAR.LAUNCH_THRESHOLD) {
+                    if (Math.random() < CONFIG.STAR.LAUNCH_CHANCE) { 
                         this.launchProbe();
                         this.probeTimer = 0;
                     }
@@ -216,8 +279,7 @@ class Particle {
 
     // --- 行为方法 ---
     updateSize() {
-        //this.size = Math.sqrt(this.mass); 
-        this.size = Math.min(Math.sqrt(this.mass), 200);
+        this.size = Math.sqrt(this.mass); 
     }
 
     absorb(prey) {
@@ -226,7 +288,7 @@ class Particle {
         effects.push(new LightFlare(this.x, this.y, this.color, 0.5));
         
         prey.markedForDeletion = true; 
-        prey.x = -9999; 
+        prey.x = -9999; // 移出屏幕防止二次计算
         updateCounter();
     }
 
@@ -237,6 +299,7 @@ class Particle {
         this.updateSize();
         enemy.updateSize();
         
+        // 互斥弹开
         const dx = this.x - enemy.x;
         const dy = this.y - enemy.y;
         const dist = Math.sqrt(dx*dx + dy*dy) || 1;
@@ -262,29 +325,32 @@ class Particle {
         this.isProbe = false;
         this.isDebris = true;
         this.fuel = 0;
-        this.color = '#444'; 
+        this.color = CONFIG.PROBE.COLOR_DEAD; 
         this.mass = 3; 
-        this.vx *= 0.6;
-        this.vy *= 0.6;
+        // 关键：保留部分速度，不要归零
+        this.vx *= 0.8;
+        this.vy *= 0.8;
         updateCounter();
     }
 
     launchProbe() {
-        this.mass -= 10; 
+        this.mass -= CONFIG.STAR.LAUNCH_COST; 
         this.updateSize();
 
         const probe = new Particle(this.x, this.y);
         probe.isProbe = true;
-        probe.color = '#aaaaaa'; 
-        probe.size = 4;
-        probe.mass = 5;
-        probe.fuel = 800; 
+        probe.color = CONFIG.PROBE.COLOR_ACTIVE; 
+        probe.size = CONFIG.PROBE.SIZE;
+        probe.mass = CONFIG.PROBE.MASS;
+        probe.fuel = CONFIG.PROBE.FUEL; 
         
+        // 切向发射位置
         const angle = Math.random() * Math.PI * 2;
         const offset = this.size + 8;
         probe.x = this.x + Math.cos(angle) * offset;
         probe.y = this.y + Math.sin(angle) * offset;
 
+        // 切向发射速度
         const tangentAngle = angle + Math.PI / 2;
         const initialSpeed = 0.5; 
         
@@ -292,13 +358,12 @@ class Particle {
         probe.vy = this.vy + Math.sin(tangentAngle) * initialSpeed;
 
         particles.push(probe);
-        // 发射特效：改为火花爆炸 
         effects.push(new ParticleExplosion(probe.x, probe.y, '#ffffff')); 
         updateCounter();
     }
 
     draw() {
-        // A. 探测器 / 残骸
+        // A. 探测器 / 残骸 (三角形)
         if (this.isProbe || this.isDebris) {
             const angle = Math.atan2(this.vy, this.vx);
             ctx.save();
@@ -338,78 +403,59 @@ class Particle {
     }
 }
 
-// 辅助：颜色混合
-function interpolateColor(color1, color2, factor) {
-    // 简单混合，如果太复杂会影响性能
-    // 这里只处理 hex 和 rgba 可能会比较麻烦
-    // 为了性能和美观，我们简化逻辑：
-    // 如果是小行星(蓝色)连小行星 -> 蓝色
-    // 如果是小行星连恒星 -> 偏向恒星色
-    // 如果是恒星连恒星 -> 白色
-    return 'rgba(150, 200, 255, 0.15)'; // 默认淡蓝白
-}
-
-// --- 连线逻辑 (升级版) ---
+// --- 连线逻辑 ---
 function drawConnections() {
-    // 为了性能，只检测距离 < 100 的点
-    // 并且限制连线总数
     let links = 0;
+    const maxLinks = 1000; // 性能熔断
     
     for (let i = 0; i < particles.length; i++) {
         const p1 = particles[i];
         
-        // 优化：每个粒子只往后检测，且只检测最近的几个
-        // 在大量粒子下 O(N^2) 太慢，我们这里只对前 100 个粒子做连线
-        // 或者只对恒星做全连接，小行星只连恒星
-        
-        // 简单暴力法 (限制距离)
+        // 性能优化：内层循环只往后找
         for (let j = i + 1; j < particles.length; j++) {
             const p2 = particles[j];
             
-            // 距离检测
+            // 粗略筛选：轴距过大直接跳过
             const dx = p1.x - p2.x;
+            if (dx > CONFIG.CONNECTION.MAX_DISTANCE || dx < -CONFIG.CONNECTION.MAX_DISTANCE) continue;
             const dy = p1.y - p2.y;
-            // 预判：如果x或y轴距离已经过大，直接跳过平方计算
-            if (Math.abs(dx) > 120 || Math.abs(dy) > 120) continue;
-            
+            if (dy > CONFIG.CONNECTION.MAX_DISTANCE || dy < -CONFIG.CONNECTION.MAX_DISTANCE) continue;
+
             const distSq = dx*dx + dy*dy;
             
-            if (distSq < 14400) { // 120px
+            if (distSq < MAX_CONN_DIST_SQ) { 
                 const dist = Math.sqrt(distSq);
-                const alpha = 1 - (dist / 120);
+                const alpha = 1 - (dist / CONFIG.CONNECTION.MAX_DISTANCE);
                 
                 ctx.beginPath();
                 ctx.moveTo(p1.x, p1.y);
                 ctx.lineTo(p2.x, p2.y);
                 
-                // 颜色逻辑：混合色
+                // 颜色逻辑
                 if (p1.isStar && p2.isStar) {
                     ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.3})`;
-                    ctx.lineWidth = 1;
-                } else if (p1.isStar || p2.isStar) {
-                    // 恒星连小行星
-                    const starColor = p1.isStar ? p1.color : p2.color;
-                    ctx.strokeStyle = starColor; // 简单直接用恒星色
-                    ctx.globalAlpha = alpha * 0.2;
                     ctx.lineWidth = 0.8;
-                } else {
-                    // 小行星连小行星
-                    ctx.strokeStyle = `rgba(100, 200, 255, ${alpha * 0.15})`;
+                } else if (p1.isStar || p2.isStar) {
+                    const starColor = p1.isStar ? p1.color : p2.color;
+                    ctx.strokeStyle = starColor; 
+                    ctx.globalAlpha = alpha * 0.2;
                     ctx.lineWidth = 0.5;
+                } else {
+                    ctx.strokeStyle = `rgba(100, 200, 255, ${alpha * CONFIG.CONNECTION.OPACITY})`;
+                    ctx.lineWidth = 0.3;
                 }
                 
                 ctx.stroke();
                 ctx.globalAlpha = 1.0;
                 
                 links++;
-                if (links > 1000) return; // 熔断保护
+                if (links > maxLinks) return;
             }
         }
     }
 }
 
-
-// --- 特效类 (保持不变) ---
+// --- 特效类 ---
 class ThrustParticle {
     constructor(x, y, parentVx, parentVy) {
         this.x = x;
@@ -417,11 +463,14 @@ class ThrustParticle {
         this.life = 1.0;
         this.decay = 0.05 + Math.random() * 0.05;
         this.size = Math.random() * 2 + 1;
+        
         const speed = Math.sqrt(parentVx*parentVx + parentVy*parentVy);
         if (speed > 1.5) this.color = '#00ffff'; else this.color = '#ffaa00';
+        
         const angle = Math.atan2(parentVy, parentVx) + Math.PI; 
         const spread = (Math.random() - 0.5) * 0.8;
         const ejectSpeed = Math.random() * 1.5;
+        
         this.vx = Math.cos(angle + spread) * ejectSpeed;
         this.vy = Math.sin(angle + spread) * ejectSpeed;
     }
@@ -504,10 +553,11 @@ class ParticleExplosion {
     }
 }
 
+// --- 主循环 ---
 function init() {
     particles = [];
     effects = [];
-    for (let i = 0; i < INITIAL_ASTEROIDS; i++) {
+    for (let i = 0; i < CONFIG.INITIAL_ASTEROIDS; i++) {
         particles.push(new Particle());
     }
     updateCounter();
@@ -519,7 +569,7 @@ function animate() {
 
     // 0. 蓄力光圈
     if (mouse.isDown) {
-        mouse.charge = Math.min(mouse.charge + 2, MAX_CHARGE); 
+        mouse.charge = Math.min(mouse.charge + CONFIG.STAR.CHARGE_SPEED, CONFIG.STAR.MAX_CHARGE_MASS); 
         ctx.beginPath();
         ctx.arc(mouse.x, mouse.y, Math.sqrt(mouse.charge), 0, Math.PI * 2);
         ctx.strokeStyle = '#fff';
@@ -540,10 +590,10 @@ function animate() {
         ctx.stroke();
     }
 
-    // 1. 绘制连线 (置于底部)
+    // 1. 连线 (底层)
     drawConnections();
 
-    // 2. 更新粒子
+    // 2. 粒子更新
     particles = particles.filter(p => !p.markedForDeletion);
     effects = effects.filter(e => e.life > 0);
 
@@ -557,13 +607,13 @@ function animate() {
         e.draw();
     });
 
-    // 自动补充小行星
-    if (particles.length < 280) { // 稍微增加保留数量
+    // 3. 自动补充
+    if (particles.length < CONFIG.MIN_PARTICLE_COUNT) {
         particles.push(new Particle());
     }
     
-    // 随机生成恒星 (极低概率)
-    if (Math.random() < 0.001) {
+    // 4. 随机自然生成恒星
+    if (Math.random() < CONFIG.STAR.SPAWN_CHANCE) {
         spawnRandomStar();
     }
 
