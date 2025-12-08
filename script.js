@@ -51,7 +51,7 @@ const CONFIG = {
     // --- 🔗 连线特效 (Connections) ---
     CONNECTION: {
         MAX_DISTANCE: 120,        // 最大连线距离
-        OPACITY: 0.15,            // 连线基础透明度
+        OPACITY: 0.3,            // 连线基础透明度
     }
 };
 
