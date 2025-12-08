@@ -10,8 +10,8 @@ const CONFIG = {
     // --- 🌌 宇宙物理 ---
     G: 0.5,                       // 引力常数 (影响引力强弱)
     FRICTION: 0.95,               // 阻力系数 (速度过快时的减速比例)
-    INITIAL_ASTEROIDS: 60,        // 初始小行星数量
-    MIN_PARTICLE_COUNT: 40,       // 维持的最少粒子数 (低于此值自动补充)
+    INITIAL_ASTEROIDS: 80,        // 初始小行星数量
+    MIN_PARTICLE_COUNT: 100,       // 维持的最少粒子数 (低于此值自动补充)
     
     // --- ☀️ 恒星 (Star) ---
     STAR: {
