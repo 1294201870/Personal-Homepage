@@ -216,7 +216,8 @@ class Particle {
 
     // --- 行为方法 ---
     updateSize() {
-        this.size = Math.sqrt(this.mass); 
+        //this.size = Math.sqrt(this.mass); 
+        this.size = Math.min(Math.sqrt(this.mass), 200);
     }
 
     absorb(prey) {
@@ -291,7 +292,7 @@ class Particle {
         probe.vy = this.vy + Math.sin(tangentAngle) * initialSpeed;
 
         particles.push(probe);
-        // 发射特效：改为火花爆炸 (您要求的)
+        // 发射特效：改为火花爆炸 
         effects.push(new ParticleExplosion(probe.x, probe.y, '#ffffff')); 
         updateCounter();
     }
